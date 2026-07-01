@@ -1,3 +1,4 @@
+const fs = require("fs");
 const path = require("path");
 const { Client, LocalAuth } = require("whatsapp-web.js");
 
@@ -10,13 +11,35 @@ let status = "starting";
 let lastQr = null;
 let lastError = null;
 
+// Un arrêt brutal du conteneur (crash, redéploiement) laisse le fichier de verrou
+// Chromium dans le profil persistant, qui bloque ensuite tout redémarrage en pensant
+// qu'une autre instance l'utilise. Il n'y a jamais qu'une seule instance de ce service,
+// donc ce verrou est toujours périmé au démarrage — on le supprime avant de lancer.
+function clearStaleChromeLocks(dir) {
+  if (!fs.existsSync(dir)) return;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      clearStaleChromeLocks(full);
+    } else if (/^Singleton(Lock|Cookie|Socket)$/.test(entry.name)) {
+      try {
+        fs.unlinkSync(full);
+      } catch {
+        // already gone, fine
+      }
+    }
+  }
+}
+
 function build() {
+  clearStaleChromeLocks(USER_DATA_DIR);
+
   client = new Client({
     authStrategy: new LocalAuth({ dataPath: USER_DATA_DIR }),
     puppeteer: {
       headless: true,
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
     },
   });
 
