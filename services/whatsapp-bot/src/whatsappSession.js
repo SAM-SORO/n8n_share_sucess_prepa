@@ -1,69 +1,71 @@
 const path = require("path");
-const { chromium } = require("playwright");
+const { Client, LocalAuth } = require("whatsapp-web.js");
 
 const USER_DATA_DIR = path.resolve(
   process.env.WHATSAPP_USER_DATA_DIR || "./user-data"
 );
 
-let context = null;
-let page = null;
-let starting = null;
+let client = null;
+let status = "starting";
+let lastQr = null;
+let lastError = null;
 
-async function isLoggedIn(p) {
-  try {
-    await p.waitForSelector("#pane-side", { timeout: 5000 });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// WhatsApp Web blocks the default headless Chromium build's user agent as "unsupported browser" —
-// a realistic desktop Chrome UA is required for the QR/chat UI to render at all.
-const USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
-
-async function launch({ headless }) {
-  context = await chromium.launchPersistentContext(USER_DATA_DIR, {
-    headless,
-    viewport: { width: 1280, height: 900 },
-    userAgent: USER_AGENT,
+function build() {
+  client = new Client({
+    authStrategy: new LocalAuth({ dataPath: USER_DATA_DIR }),
+    puppeteer: {
+      headless: true,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    },
   });
-  page = context.pages()[0] || (await context.newPage());
-  await page.goto("https://web.whatsapp.com", { waitUntil: "domcontentloaded" });
-  return page;
+
+  client.on("qr", (qr) => {
+    status = "qr";
+    lastQr = qr;
+  });
+  client.on("ready", () => {
+    status = "ready";
+    lastQr = null;
+  });
+  client.on("authenticated", () => {
+    status = "authenticated";
+  });
+  client.on("auth_failure", (msg) => {
+    status = "auth_failure";
+    lastError = msg;
+  });
+  client.on("disconnected", (reason) => {
+    status = "disconnected";
+    lastError = reason;
+  });
+
+  return client;
 }
 
-// Le contexte persistant (userDataDir) garde la session WhatsApp Web connectée
-// entre les redémarrages du service, pour éviter de rescanner un QR à chaque cycle.
-async function init({ headless = true } = {}) {
-  if (starting) return starting;
-  starting = launch({ headless });
-  return starting;
+// whatsapp-web.js (Puppeteer sous le capot) embarque les contournements nécessaires
+// pour passer l'étape de liaison d'appareil — un Playwright "nu" se faisait bloquer
+// par la détection anti-bot de WhatsApp à cette étape, même avec un user-agent réaliste.
+async function init() {
+  if (client) return client;
+  build();
+  await client.initialize();
+  return client;
 }
 
-async function getPage() {
-  if (!page) {
+async function getClient() {
+  if (!client) {
     throw new Error("WhatsApp session not initialized — call init() first");
   }
-  return page;
+  return client;
 }
 
-async function getStatus() {
-  if (!page) return "starting";
-  const loggedIn = await isLoggedIn(page);
-  return loggedIn ? "ready" : "not_logged_in";
+function getStatus() {
+  return { status, lastError };
 }
 
-// Capture le canvas du QR code pour un login à distance (service headless, pas d'écran).
-async function getQrScreenshot() {
-  const p = await getPage();
-  if (await isLoggedIn(p)) {
-    return null;
-  }
-  const qrCanvas = p.locator("canvas").first();
-  await qrCanvas.waitFor({ state: "visible", timeout: 15000 });
-  return qrCanvas.screenshot();
+function getLastQr() {
+  return lastQr;
 }
 
-module.exports = { init, getPage, getStatus, isLoggedIn, getQrScreenshot };
+module.exports = { init, getClient, getStatus, getLastQr };

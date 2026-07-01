@@ -1,8 +1,6 @@
 const { addParticipantToGroup, SessionLostError } = require("../groupActions");
 const { isValidPhone } = require("../validatePhone");
 
-const GROUP_NAME = process.env.WHATSAPP_GROUP_NAME;
-
 async function addParticipantRoute(req, res) {
   const { phone } = req.body || {};
 
@@ -17,7 +15,7 @@ async function addParticipantRoute(req, res) {
 
   const startedAt = Date.now();
   try {
-    const outcome = await addParticipantToGroup({ groupName: GROUP_NAME, phone });
+    const outcome = await addParticipantToGroup({ phone });
     return res.status(200).json({ ...outcome, durationMs: Date.now() - startedAt });
   } catch (err) {
     if (err instanceof SessionLostError) {

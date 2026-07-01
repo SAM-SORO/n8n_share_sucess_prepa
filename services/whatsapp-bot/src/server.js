@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const QRCode = require("qrcode");
 const session = require("./whatsappSession");
 const addParticipantRoute = require("./routes/addParticipant");
 const sendInviteRoute = require("./routes/sendInvite");
@@ -26,49 +27,37 @@ function withMutex(handler) {
   };
 }
 
-app.get("/health", async (_req, res) => {
-  const status = await session.getStatus();
-  res.json({ status });
-});
-
-app.get("/debug-screenshot", async (_req, res) => {
-  try {
-    const page = await session.getPage();
-    const png = await page.screenshot({ fullPage: true });
-    res.set("Content-Type", "image/png");
-    res.send(png);
-  } catch (err) {
-    res.status(503).json({ error: err.message });
-  }
+app.get("/health", (_req, res) => {
+  res.json(session.getStatus());
 });
 
 app.get("/login-qr", async (_req, res) => {
-  try {
-    const png = await session.getQrScreenshot();
-    if (!png) {
-      return res.json({ status: "already_logged_in" });
-    }
-    res.set("Content-Type", "image/png");
-    res.set("Cache-Control", "no-store");
-    res.send(png);
-  } catch (err) {
-    res.status(503).json({ error: err.message });
+  const qr = session.getLastQr();
+  if (!qr) {
+    return res.json(session.getStatus());
   }
+  const png = await QRCode.toBuffer(qr, { type: "png", width: 300 });
+  res.set("Content-Type", "image/png");
+  res.set("Cache-Control", "no-store");
+  res.send(png);
 });
 
-// WhatsApp Web rotates the QR every ~20-30s, so a single static screenshot goes stale
-// before a human can scan it — this page re-fetches the image every few seconds instead.
+// WhatsApp Web rotates the QR every ~20-30s, so a single static image goes stale
+// before a human can scan it — this page re-fetches it every few seconds instead.
 app.get("/login", (_req, res) => {
   res.set("Content-Type", "text/html");
   res.send(`<!DOCTYPE html>
 <html><body style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;">
   <div style="text-align:center;">
     <img id="qr" src="/login-qr" style="width:300px;height:300px;" />
-    <p>Scanne avec WhatsApp (l'image se rafraîchit automatiquement)</p>
+    <p id="status">Scanne avec WhatsApp (l'image se rafraîchit automatiquement)</p>
   </div>
   <script>
-    setInterval(() => {
+    setInterval(async () => {
       document.getElementById('qr').src = '/login-qr?t=' + Date.now();
+      const r = await fetch('/health');
+      const j = await r.json();
+      document.getElementById('status').innerText = 'Statut: ' + j.status;
     }, 4000);
   </script>
 </body></html>`);
@@ -77,12 +66,8 @@ app.get("/login", (_req, res) => {
 app.post("/add-participant", withMutex(addParticipantRoute));
 app.post("/send-invite", withMutex(sendInviteRoute));
 
-session
-  .init({ headless: true })
-  .then(() => {
-    app.listen(PORT, () => console.log(`whatsapp-bot listening on :${PORT}`));
-  })
-  .catch((err) => {
-    console.error("Failed to start WhatsApp session:", err);
-    process.exit(1);
-  });
+app.listen(PORT, () => console.log(`whatsapp-bot listening on :${PORT}`));
+
+session.init().catch((err) => {
+  console.error("Failed to start WhatsApp session:", err);
+});
