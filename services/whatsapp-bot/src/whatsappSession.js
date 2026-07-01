@@ -18,10 +18,16 @@ async function isLoggedIn(p) {
   }
 }
 
+// WhatsApp Web blocks the default headless Chromium build's user agent as "unsupported browser" —
+// a realistic desktop Chrome UA is required for the QR/chat UI to render at all.
+const USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
 async function launch({ headless }) {
   context = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless,
     viewport: { width: 1280, height: 900 },
+    userAgent: USER_AGENT,
   });
   page = context.pages()[0] || (await context.newPage());
   await page.goto("https://web.whatsapp.com", { waitUntil: "domcontentloaded" });
@@ -49,4 +55,15 @@ async function getStatus() {
   return loggedIn ? "ready" : "not_logged_in";
 }
 
-module.exports = { init, getPage, getStatus, isLoggedIn };
+// Capture le canvas du QR code pour un login à distance (service headless, pas d'écran).
+async function getQrScreenshot() {
+  const p = await getPage();
+  if (await isLoggedIn(p)) {
+    return null;
+  }
+  const qrCanvas = p.locator("canvas").first();
+  await qrCanvas.waitFor({ state: "visible", timeout: 15000 });
+  return qrCanvas.screenshot();
+}
+
+module.exports = { init, getPage, getStatus, isLoggedIn, getQrScreenshot };

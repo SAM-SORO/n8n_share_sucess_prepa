@@ -31,6 +31,30 @@ app.get("/health", async (_req, res) => {
   res.json({ status });
 });
 
+app.get("/debug-screenshot", async (_req, res) => {
+  try {
+    const page = await session.getPage();
+    const png = await page.screenshot({ fullPage: true });
+    res.set("Content-Type", "image/png");
+    res.send(png);
+  } catch (err) {
+    res.status(503).json({ error: err.message });
+  }
+});
+
+app.get("/login-qr", async (_req, res) => {
+  try {
+    const png = await session.getQrScreenshot();
+    if (!png) {
+      return res.json({ status: "already_logged_in" });
+    }
+    res.set("Content-Type", "image/png");
+    res.send(png);
+  } catch (err) {
+    res.status(503).json({ error: err.message });
+  }
+});
+
 app.post("/add-participant", withMutex(addParticipantRoute));
 app.post("/send-invite", withMutex(sendInviteRoute));
 
