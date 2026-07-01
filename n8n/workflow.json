@@ -105,7 +105,7 @@
           "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
           "combinator": "and",
           "conditions": [
-            { "id": "cap-reached", "leftValue": "={{ $json.dailyCount }}", "rightValue": 50, "operator": { "type": "number", "operation": "gte" } }
+            { "id": "cap-reached", "leftValue": "={{ $json.dailyCount }}", "rightValue": 70, "operator": { "type": "number", "operation": "gte" } }
           ]
         }
       },
@@ -205,7 +205,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ms = Math.floor(Math.random() * (11 * 60 * 1000 - 4 * 60 * 1000 + 1)) + 4 * 60 * 1000;\nreturn [{ json: { waitMinutes: ms / 60000 } }];"
+        "jsCode": "const ms = Math.floor(Math.random() * (6 * 60 * 1000 - 3 * 60 * 1000 + 1)) + 3 * 60 * 1000;\nreturn [{ json: { waitMinutes: ms / 60000 } }];"
       },
       "name": "Random Delay",
       "type": "n8n-nodes-base.code",

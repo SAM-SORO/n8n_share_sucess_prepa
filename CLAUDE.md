@@ -155,7 +155,7 @@ Toutes les 5 minutes :
 
 3. marquer en "processing"
 
-4. attendre un délai aléatoire (4 à 11 minutes)
+4. attendre un délai aléatoire (3 à 6 minutes)
 
 5. tenter l'ajout au groupe via Playwright
 
@@ -188,7 +188,7 @@ https://chat.whatsapp.com/GdoYnmvDIIk3cKd7bBuYwn
 
 # 📊 Limite quotidienne
 
-- maximum : 50 ajouts / jour
+- maximum : 70 ajouts / jour
 
 ## Si limite atteinte :
 - passer les étudiants restants en "skipped"
@@ -228,7 +228,7 @@ WhatsApp peut détecter :
 - volume trop élevé
 
 Donc :
-- ne jamais dépasser 50/jour
+- ne jamais dépasser 70/jour
 - délais aléatoires obligatoires
 - pauses longues après séries d’actions
 

@@ -29,3 +29,9 @@ Name : whatsapp-bot-data ✓ (déjà bon)
 Source Path : laisse vide — c'est pour un bind-mount vers un chemin spécifique de l'hôte Coolify, on n'en a pas besoin. Coolify gère le stockage lui-même avec un volume nommé.
 Destination Path : /data
 Pour le port : remplace le 3000 par défaut par 3001, puisque c'est le port sur lequel le service écoute réellement (EXPOSE 3001 dans le Dockerfile, PORT=3001)
+
+
+Déployer/redéployer le service sur Coolify (il va récupérer ce dernier commit)
+Une fois déployé, ouvre https://<ton-domaine-coolify>/login-qr directement dans ton navigateur
+Scanne le QR affiché avec WhatsApp sur ton téléphone (Paramètres → Appareils connectés → Connecter un appareil)
+Vérifie ensuite https://<ton-domaine-coolify>/health → devrait afficher {"status":"ready"}
