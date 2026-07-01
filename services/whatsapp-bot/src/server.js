@@ -63,6 +63,17 @@ app.get("/login", (_req, res) => {
 </body></html>`);
 });
 
+app.get("/debug/groups", async (_req, res) => {
+  try {
+    const client = await session.getClient();
+    const chats = await client.getChats();
+    const groups = chats.filter((c) => c.isGroup).map((c) => ({ id: c.id._serialized, name: c.name }));
+    res.json({ configuredGroupName: process.env.WHATSAPP_GROUP_NAME, groups });
+  } catch (err) {
+    res.status(503).json({ error: err.message });
+  }
+});
+
 app.post("/add-participant", withMutex(addParticipantRoute));
 app.post("/send-invite", withMutex(sendInviteRoute));
 
