@@ -49,10 +49,29 @@ app.get("/login-qr", async (_req, res) => {
       return res.json({ status: "already_logged_in" });
     }
     res.set("Content-Type", "image/png");
+    res.set("Cache-Control", "no-store");
     res.send(png);
   } catch (err) {
     res.status(503).json({ error: err.message });
   }
+});
+
+// WhatsApp Web rotates the QR every ~20-30s, so a single static screenshot goes stale
+// before a human can scan it — this page re-fetches the image every few seconds instead.
+app.get("/login", (_req, res) => {
+  res.set("Content-Type", "text/html");
+  res.send(`<!DOCTYPE html>
+<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;">
+  <div style="text-align:center;">
+    <img id="qr" src="/login-qr" style="width:300px;height:300px;" />
+    <p>Scanne avec WhatsApp (l'image se rafraîchit automatiquement)</p>
+  </div>
+  <script>
+    setInterval(() => {
+      document.getElementById('qr').src = '/login-qr?t=' + Date.now();
+    }, 4000);
+  </script>
+</body></html>`);
 });
 
 app.post("/add-participant", withMutex(addParticipantRoute));
