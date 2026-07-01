@@ -123,7 +123,7 @@
         "queryParameters": {
           "parameters": [
             { "name": "select", "value": "id,nom,telephone,group_id,attempt_count" },
-            { "name": "or", "value": "=(whatsapp_status.eq.pending,and(whatsapp_status.eq.invited,next_retry_at.lte.{{ $now.toISO() }},attempt_count.lt.2),and(whatsapp_status.eq.processing,last_attempt_at.lt.{{ $now.minus({ minutes: 20 }).toISO() }}))" },
+            { "name": "or", "value": "=(whatsapp_status.eq.pending,and(whatsapp_status.eq.invited,next_retry_at.lte.{{ $now.toISO() }},attempt_count.lt.2),and(whatsapp_status.eq.processing,last_attempt_at.lt.{{ $now.minus({ minutes: 20 }).toISO() }},attempt_count.lt.2))" },
             { "name": "order", "value": "created_at.asc" },
             { "name": "limit", "value": "1" }
           ]
@@ -369,12 +369,38 @@
       "typeVersion": 4.2,
       "position": [1440, 150],
       "id": "10000000-0000-0000-0000-000000000015"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/students",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "whatsapp_status", "value": "eq.processing" },
+            { "name": "last_attempt_at", "value": "=lt.{{ $now.minus({ minutes: 20 }).toISO() }}" },
+            { "name": "attempt_count", "value": "gte.2" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" } ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ whatsapp_status: 'failed', error_code: 'STUCK_MAX_ATTEMPTS', last_error: 'stuck in processing past max attempts, force-failed by cleanup step', next_retry_at: null }) }}",
+        "options": {}
+      },
+      "name": "Reap Stuck Students",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1920, 150],
+      "id": "10000000-0000-0000-0000-000000000016"
     }
   ],
   "connections": {
     "Schedule Trigger": { "main": [ [ { "node": "Acquire Lock", "type": "main", "index": 0 } ] ] },
     "Acquire Lock": { "main": [ [ { "node": "IF Lock Acquired", "type": "main", "index": 0 } ] ] },
-    "IF Lock Acquired": { "main": [ [ { "node": "End (Lock Busy)", "type": "main", "index": 0 } ], [ { "node": "Count Added Today", "type": "main", "index": 0 } ] ] },
+    "IF Lock Acquired": { "main": [ [ { "node": "End (Lock Busy)", "type": "main", "index": 0 } ], [ { "node": "Reap Stuck Students", "type": "main", "index": 0 } ] ] },
+    "Reap Stuck Students": { "main": [ [ { "node": "Count Added Today", "type": "main", "index": 0 } ] ] },
     "Count Added Today": { "main": [ [ { "node": "Parse Daily Count", "type": "main", "index": 0 } ] ] },
     "Parse Daily Count": { "main": [ [ { "node": "IF Cap Reached", "type": "main", "index": 0 } ] ] },
     "IF Cap Reached": { "main": [ [ { "node": "Release Lock", "type": "main", "index": 0 } ], [ { "node": "Select Candidate", "type": "main", "index": 0 } ] ] },
