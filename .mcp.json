@@ -1,0 +1,34 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "D:\\DocumentEcole\\ECOLES\\ING\\Grand_PROJET_moi_ING\\automatisation"
+      ]
+    },
+    "git": {
+      "command": "C:\\Users\\HP\\AppData\\Roaming\\Python\\Python313\\Scripts\\mcp-server-git.exe",
+      "args": [
+        "--repository",
+        "D:\\DocumentEcole\\ECOLES\\ING\\Grand_PROJET_moi_ING\\automatisation"
+      ]
+    },
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=gntossoezcluhtpkzzse"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ]
+    },
+    "n8n": {
+      "type": "http",
+      "url": "https://n8n.coolify.aduticsi.com/mcp-server/http"
+    }
+  }
+}

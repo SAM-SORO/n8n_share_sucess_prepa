@@ -1,0 +1,16 @@
+{
+  "name": "whatsapp-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Micro-service HTTP gardant une session WhatsApp Web persistante, piloté par le workflow n8n",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "login": "node src/login.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "playwright": "1.61.1"
+  }
+}
