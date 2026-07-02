@@ -70,7 +70,7 @@
         "queryParameters": {
           "parameters": [
             { "name": "select", "value": "id" },
-            { "name": "whatsapp_status", "value": "eq.added" },
+            { "name": "whatsapp_status", "value": "in.(added,invited)" },
             { "name": "last_attempt_at", "value": "=gte.{{ $now.startOf('day').toISO() }}" }
           ]
         },
@@ -83,7 +83,7 @@
         },
         "options": { "response": { "response": { "fullResponse": true } } }
       },
-      "name": "Count Added Today",
+      "name": "Count Sent Today",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [-1680, 0],
@@ -225,61 +225,6 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.PLAYWRIGHT_SERVICE_URL }}/add-participant",
-        "sendHeaders": true,
-        "headerParameters": { "parameters": [ { "name": "Content-Type", "value": "application/json" } ] },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ studentId: $('Claim Student').item.json.body[0].id, phone: $('Claim Student').item.json.body[0].telephone, groupId: $('Claim Student').item.json.body[0].group_id, attemptNumber: $('Claim Student').item.json.body[0].attempt_count }) }}",
-        "options": {}
-      },
-      "name": "Attempt Add",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [480, 150],
-      "id": "10000000-0000-0000-0000-00000000000e"
-    },
-    {
-      "parameters": {
-        "dataType": "string",
-        "value1": "={{ $json.result }}",
-        "rules": {
-          "rules": [
-            { "value2": "added", "output": 0 },
-            { "value2": "retryable", "output": 1 },
-            { "value2": "permanent_fail", "output": 2 }
-          ]
-        },
-        "fallbackOutput": 3
-      },
-      "name": "Switch Route By Result",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 1,
-      "position": [720, 150],
-      "id": "10000000-0000-0000-0000-00000000000f"
-    },
-    {
-      "parameters": {
-        "method": "PATCH",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/students",
-        "sendQuery": true,
-        "queryParameters": { "parameters": [ { "name": "id", "value": "=eq.{{ $('Claim Student').item.json.body[0].id }}" } ] },
-        "sendHeaders": true,
-        "headerParameters": { "parameters": [ { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" } ] },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ whatsapp_status: 'added', last_error: null, error_code: null, next_retry_at: null }) }}",
-        "options": {}
-      },
-      "name": "Update Added",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [960, -150],
-      "id": "10000000-0000-0000-0000-000000000010"
-    },
-    {
-      "parameters": {
-        "method": "POST",
         "url": "={{ $env.PLAYWRIGHT_SERVICE_URL }}/send-invite",
         "sendHeaders": true,
         "headerParameters": { "parameters": [ { "name": "Content-Type", "value": "application/json" } ] },
@@ -291,8 +236,24 @@
       "name": "Send Invite",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [960, 50],
+      "position": [480, 150],
       "id": "10000000-0000-0000-0000-000000000011"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            { "id": "message-sent", "leftValue": "={{ $json.result }}", "rightValue": "sent", "operator": { "type": "string", "operation": "equals" } }
+          ]
+        }
+      },
+      "name": "IF Message Sent",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [720, 150],
+      "id": "10000000-0000-0000-0000-000000000019"
     },
     {
       "parameters": {
@@ -304,13 +265,13 @@
         "headerParameters": { "parameters": [ { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" } ] },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ whatsapp_status: 'invited', last_error: $('Attempt Add').item.json.errorMessage, error_code: $('Attempt Add').item.json.errorCode, next_retry_at: ($('Claim Student').item.json.body[0].attempt_count >= 2) ? null : $now.plus({ minutes: 30 }).toISO() }) }}",
+        "jsonBody": "={{ JSON.stringify({ whatsapp_status: 'invited', last_error: null, error_code: null, next_retry_at: null }) }}",
         "options": {}
       },
       "name": "Update Invited",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1200, 50],
+      "position": [960, 50],
       "id": "10000000-0000-0000-0000-000000000012"
     },
     {
@@ -323,33 +284,14 @@
         "headerParameters": { "parameters": [ { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" } ] },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ whatsapp_status: 'failed', last_error: $('Attempt Add').item.json.errorMessage, error_code: $('Attempt Add').item.json.errorCode, next_retry_at: null }) }}",
+        "jsonBody": "={{ JSON.stringify({ whatsapp_status: 'failed', last_error: $('Send Invite').item.json.errorMessage, error_code: $('Send Invite').item.json.errorCode, next_retry_at: null }) }}",
         "options": {}
       },
       "name": "Update Failed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [960, 350],
+      "position": [960, 250],
       "id": "10000000-0000-0000-0000-000000000013"
-    },
-    {
-      "parameters": {
-        "method": "PATCH",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/students",
-        "sendQuery": true,
-        "queryParameters": { "parameters": [ { "name": "id", "value": "=eq.{{ $('Claim Student').item.json.body[0].id }}" } ] },
-        "sendHeaders": true,
-        "headerParameters": { "parameters": [ { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" } ] },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ whatsapp_status: 'failed', last_error: 'unexpected response from whatsapp-bot: ' + JSON.stringify($json), error_code: 'UNKNOWN_RESULT', next_retry_at: null }) }}",
-        "options": {}
-      },
-      "name": "Update Unknown",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [960, 550],
-      "id": "10000000-0000-0000-0000-000000000014"
     },
     {
       "parameters": {
@@ -430,8 +372,8 @@
     "IF Lock Acquired": { "main": [ [ { "node": "End (Lock Busy)", "type": "main", "index": 0 } ], [ { "node": "Reap Stuck Students", "type": "main", "index": 0 } ] ] },
     "Reap Stuck Students": { "main": [ [ { "node": "Check Bot Health", "type": "main", "index": 0 } ] ] },
     "Check Bot Health": { "main": [ [ { "node": "IF Bot Healthy", "type": "main", "index": 0 } ] ] },
-    "IF Bot Healthy": { "main": [ [ { "node": "Count Added Today", "type": "main", "index": 0 } ], [ { "node": "Release Lock", "type": "main", "index": 0 } ] ] },
-    "Count Added Today": { "main": [ [ { "node": "Parse Daily Count", "type": "main", "index": 0 } ] ] },
+    "IF Bot Healthy": { "main": [ [ { "node": "Count Sent Today", "type": "main", "index": 0 } ], [ { "node": "Release Lock", "type": "main", "index": 0 } ] ] },
+    "Count Sent Today": { "main": [ [ { "node": "Parse Daily Count", "type": "main", "index": 0 } ] ] },
     "Parse Daily Count": { "main": [ [ { "node": "IF Cap Reached", "type": "main", "index": 0 } ] ] },
     "IF Cap Reached": { "main": [ [ { "node": "Release Lock", "type": "main", "index": 0 } ], [ { "node": "Select Candidate", "type": "main", "index": 0 } ] ] },
     "Select Candidate": { "main": [ [ { "node": "IF No Candidate", "type": "main", "index": 0 } ] ] },
@@ -439,21 +381,11 @@
     "Claim Student": { "main": [ [ { "node": "IF Claim Failed", "type": "main", "index": 0 } ] ] },
     "IF Claim Failed": { "main": [ [ { "node": "Release Lock", "type": "main", "index": 0 } ], [ { "node": "Random Delay", "type": "main", "index": 0 } ] ] },
     "Random Delay": { "main": [ [ { "node": "Wait Random", "type": "main", "index": 0 } ] ] },
-    "Wait Random": { "main": [ [ { "node": "Attempt Add", "type": "main", "index": 0 } ] ] },
-    "Attempt Add": { "main": [ [ { "node": "Switch Route By Result", "type": "main", "index": 0 } ] ] },
-    "Switch Route By Result": {
-      "main": [
-        [ { "node": "Update Added", "type": "main", "index": 0 } ],
-        [ { "node": "Send Invite", "type": "main", "index": 0 } ],
-        [ { "node": "Update Failed", "type": "main", "index": 0 } ],
-        [ { "node": "Update Unknown", "type": "main", "index": 0 } ]
-      ]
-    },
-    "Update Added": { "main": [ [ { "node": "Release Lock", "type": "main", "index": 0 } ] ] },
-    "Send Invite": { "main": [ [ { "node": "Update Invited", "type": "main", "index": 0 } ] ] },
+    "Wait Random": { "main": [ [ { "node": "Send Invite", "type": "main", "index": 0 } ] ] },
+    "Send Invite": { "main": [ [ { "node": "IF Message Sent", "type": "main", "index": 0 } ] ] },
+    "IF Message Sent": { "main": [ [ { "node": "Update Invited", "type": "main", "index": 0 } ], [ { "node": "Update Failed", "type": "main", "index": 0 } ] ] },
     "Update Invited": { "main": [ [ { "node": "Release Lock", "type": "main", "index": 0 } ] ] },
-    "Update Failed": { "main": [ [ { "node": "Release Lock", "type": "main", "index": 0 } ] ] },
-    "Update Unknown": { "main": [ [ { "node": "Release Lock", "type": "main", "index": 0 } ] ] }
+    "Update Failed": { "main": [ [ { "node": "Release Lock", "type": "main", "index": 0 } ] ] }
   },
   "settings": { "executionOrder": "v1", "availableInMCP": true }
 }

@@ -43,9 +43,10 @@ La colonne `whatsapp_status` doit suivre STRICTEMENT ces valeurs :
 
 ## 3. added
 ➡️ Étudiant ajouté avec succès au groupe WhatsApp
+⚠️ Depuis le 2026-07-02 : plus utilisé en pratique (voir section "Stratégie d'envoi" plus bas) — l'ajout automatique au groupe a été abandonné au profit de l'envoi systématique du lien d'invitation, jugé trop détectable par WhatsApp. Conservé dans le schéma pour compatibilité avec l'historique.
 
 ## 4. invited
-➡️ Ajout impossible → lien d'invitation envoyé
+➡️ Lien d'invitation envoyé (chemin normal désormais, pas seulement un fallback)
 
 ## 5. failed
 ➡️ Échec définitif (numéro invalide, erreur critique)
@@ -157,19 +158,26 @@ Toutes les 5 minutes :
 
 4. attendre un délai aléatoire (3 à 6 minutes)
 
-5. tenter l'ajout au groupe via Playwright
+5. envoyer le lien d'invitation directement (pas de tentative d'ajout au groupe, voir "Stratégie d'envoi")
 
-6. si succès :
-   - whatsapp_status = "added"
-
-7. si échec :
-   - envoyer lien d'invitation
+6. si envoi réussi :
    - whatsapp_status = "invited"
+
+7. si échec (numéro invalide ou erreur) :
+   - whatsapp_status = "failed"
 
 8. incrémenter attempt_count
 9. enregistrer last_attempt_at
 
 ---
+
+# 📨 Stratégie d'envoi (mise à jour 2026-07-02)
+
+**L'ajout automatique direct au groupe a été abandonné.** Constat : ajouter quelqu'un à un groupe sans son accord génère un message système visible par tout le groupe et expose la personne ajoutée à signaler le compte — un vecteur de détection/plainte plus fort qu'un simple message. Suite à plusieurs déconnexions forcées du compte WhatsApp automatisé la nuit du 2026-07-01 au 2026-07-02, décision : **on envoie systématiquement le lien d'invitation en message direct, on ne tente plus jamais l'ajout automatique au groupe.**
+
+Ça reste sur le compte WhatsApp actuel (lié via appareil, pas l'API officielle Business — jugée trop coûteuse/complexe à mettre en place pour ce projet : nécessite un numéro dédié neuf et ne supporte de toute façon pas la gestion de groupe). Le rythme (1 seul envoi à la fois, délai aléatoire 3-6 min, max 70/jour) reste identique — c'est justement ce rythme qui doit éviter d'être vu comme un bot de spam, même en envoi de messages directs.
+
+**Limite connue** : l'envoi de messages non sollicités en masse est lui aussi surveillé par WhatsApp (spam de premiers contacts) — ce changement réduit le risque de détection mais ne l'élimine pas complètement.
 
 
 # Message d’invitation
@@ -236,7 +244,8 @@ Donc :
 
 # 🔁 Résumé du flux
 
-pending → processing → added
-                     ↘ invited
+pending → processing → invited
                      ↘ failed
                      ↘ skipped
+
+(added : conservé dans le schéma mais plus produit par le workflow depuis le 2026-07-02, voir "Stratégie d'envoi")
