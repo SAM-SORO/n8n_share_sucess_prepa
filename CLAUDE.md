@@ -175,7 +175,9 @@ Toutes les 5 minutes :
 
 **L'ajout automatique direct au groupe a été abandonné.** Constat : ajouter quelqu'un à un groupe sans son accord génère un message système visible par tout le groupe et expose la personne ajoutée à signaler le compte — un vecteur de détection/plainte plus fort qu'un simple message. Suite à plusieurs déconnexions forcées du compte WhatsApp automatisé la nuit du 2026-07-01 au 2026-07-02, décision : **on envoie systématiquement le lien d'invitation en message direct, on ne tente plus jamais l'ajout automatique au groupe.**
 
-Ça reste sur le compte WhatsApp actuel (lié via appareil, pas l'API officielle Business — jugée trop coûteuse/complexe à mettre en place pour ce projet : nécessite un numéro dédié neuf et ne supporte de toute façon pas la gestion de groupe). Le rythme (1 seul envoi à la fois, délai aléatoire 3-6 min, max 70/jour) reste identique — c'est justement ce rythme qui doit éviter d'être vu comme un bot de spam, même en envoi de messages directs.
+Ça reste sur un compte WhatsApp lié via appareil (pas l'API officielle Business — jugée trop coûteuse/complexe à mettre en place pour ce projet : nécessite un numéro dédié neuf et ne supporte de toute façon pas la gestion de groupe). Le rythme (1 seul envoi à la fois, délai aléatoire 3-6 min) reste identique — c'est justement ce rythme qui doit éviter d'être vu comme un bot de spam, même en envoi de messages directs.
+
+**Changement de compte (2026-07-02)** : après plusieurs déconnexions forcées répétées du premier compte (y compris après un simple envoi de message unique, sans lien évident avec le volume ou le type d'action), bascule sur un second compte WhatsApp. Cap quotidien abaissé temporairement à **30/jour** (au lieu de 70) le temps de valider que ce nouveau compte tient la charge — à remonter progressivement si tout se passe bien.
 
 **Limite connue** : l'envoi de messages non sollicités en masse est lui aussi surveillé par WhatsApp (spam de premiers contacts) — ce changement réduit le risque de détection mais ne l'élimine pas complètement.
 
@@ -196,7 +198,7 @@ https://chat.whatsapp.com/GdoYnmvDIIk3cKd7bBuYwn
 
 # 📊 Limite quotidienne
 
-- maximum : 70 ajouts / jour
+- maximum : 30 ajouts / jour (temporaire, cap de démarrage prudent pour le nouveau compte — voir "Stratégie d'envoi")
 
 ## Si limite atteinte :
 - passer les étudiants restants en "skipped"
@@ -236,7 +238,7 @@ WhatsApp peut détecter :
 - volume trop élevé
 
 Donc :
-- ne jamais dépasser 70/jour
+- ne jamais dépasser 30/jour (temporaire, voir "Stratégie d'envoi")
 - délais aléatoires obligatoires
 - pauses longues après séries d’actions
 

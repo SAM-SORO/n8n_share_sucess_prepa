@@ -105,7 +105,7 @@
           "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
           "combinator": "and",
           "conditions": [
-            { "id": "cap-reached", "leftValue": "={{ $json.dailyCount }}", "rightValue": 70, "operator": { "type": "number", "operation": "gte" } }
+            { "id": "cap-reached", "leftValue": "={{ $json.dailyCount }}", "rightValue": 30, "operator": { "type": "number", "operation": "gte" } }
           ]
         }
       },
