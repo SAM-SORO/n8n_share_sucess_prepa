@@ -394,13 +394,43 @@
       "typeVersion": 4.2,
       "position": [-1920, 150],
       "id": "10000000-0000-0000-0000-000000000016"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.PLAYWRIGHT_SERVICE_URL }}/health",
+        "options": { "response": { "response": { "fullResponse": true } } }
+      },
+      "name": "Check Bot Health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1680, 150],
+      "id": "10000000-0000-0000-0000-000000000017"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            { "id": "bot-healthy", "leftValue": "={{ $json.body.status }}", "rightValue": "ready", "operator": { "type": "string", "operation": "equals" } }
+          ]
+        }
+      },
+      "name": "IF Bot Healthy",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-1440, 150],
+      "id": "10000000-0000-0000-0000-000000000018"
     }
   ],
   "connections": {
     "Schedule Trigger": { "main": [ [ { "node": "Acquire Lock", "type": "main", "index": 0 } ] ] },
     "Acquire Lock": { "main": [ [ { "node": "IF Lock Acquired", "type": "main", "index": 0 } ] ] },
     "IF Lock Acquired": { "main": [ [ { "node": "End (Lock Busy)", "type": "main", "index": 0 } ], [ { "node": "Reap Stuck Students", "type": "main", "index": 0 } ] ] },
-    "Reap Stuck Students": { "main": [ [ { "node": "Count Added Today", "type": "main", "index": 0 } ] ] },
+    "Reap Stuck Students": { "main": [ [ { "node": "Check Bot Health", "type": "main", "index": 0 } ] ] },
+    "Check Bot Health": { "main": [ [ { "node": "IF Bot Healthy", "type": "main", "index": 0 } ] ] },
+    "IF Bot Healthy": { "main": [ [ { "node": "Count Added Today", "type": "main", "index": 0 } ], [ { "node": "Release Lock", "type": "main", "index": 0 } ] ] },
     "Count Added Today": { "main": [ [ { "node": "Parse Daily Count", "type": "main", "index": 0 } ] ] },
     "Parse Daily Count": { "main": [ [ { "node": "IF Cap Reached", "type": "main", "index": 0 } ] ] },
     "IF Cap Reached": { "main": [ [ { "node": "Release Lock", "type": "main", "index": 0 } ], [ { "node": "Select Candidate", "type": "main", "index": 0 } ] ] },

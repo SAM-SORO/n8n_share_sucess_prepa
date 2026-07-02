@@ -6,10 +6,56 @@ const USER_DATA_DIR = path.resolve(
   process.env.WHATSAPP_USER_DATA_DIR || "./user-data"
 );
 
+const HEALTH_CHECK_INTERVAL_MS = 2 * 60 * 1000;
+const HEALTH_CHECK_TIMEOUT_MS = 15 * 1000;
+
 let client = null;
 let status = "starting";
 let lastQr = null;
 let lastError = null;
+let healthCheckTimer = null;
+let lastHealthCheckAt = null;
+let lastHealthCheckError = null;
+
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
+// "ready" only means the library saw an auth handshake succeed — it doesn't mean
+// the underlying page is still usable. A crash inside a client.*() call (like the
+// whatsapp-web.js "findImpl is not a function" issue) can leave the page broken
+// without firing any disconnect event, so `status` would keep lying "ready" while
+// every real request quietly fails. This actively pings the page so we notice
+// within minutes instead of only finding out from a pile-up of failed attempts.
+async function runHealthCheck() {
+  try {
+    await withTimeout(client.getState(), HEALTH_CHECK_TIMEOUT_MS, "health check");
+    lastHealthCheckAt = new Date().toISOString();
+    lastHealthCheckError = null;
+    if (status === "unhealthy") status = "ready";
+  } catch (err) {
+    lastHealthCheckError = err.message;
+    status = "unhealthy";
+    lastError = `health check failed: ${err.message}`;
+  }
+}
+
+function stopHealthCheck() {
+  if (healthCheckTimer) {
+    clearInterval(healthCheckTimer);
+    healthCheckTimer = null;
+  }
+}
+
+function startHealthCheck() {
+  stopHealthCheck();
+  healthCheckTimer = setInterval(runHealthCheck, HEALTH_CHECK_INTERVAL_MS);
+}
 
 // Un arrêt brutal du conteneur (crash, redéploiement) laisse le fichier de verrou
 // Chromium dans le profil persistant, qui bloque ensuite tout redémarrage en pensant
@@ -50,6 +96,7 @@ function build() {
   client.on("ready", () => {
     status = "ready";
     lastQr = null;
+    startHealthCheck();
   });
   client.on("authenticated", () => {
     status = "authenticated";
@@ -57,10 +104,12 @@ function build() {
   client.on("auth_failure", (msg) => {
     status = "auth_failure";
     lastError = msg;
+    stopHealthCheck();
   });
   client.on("disconnected", (reason) => {
     status = "disconnected";
     lastError = reason;
+    stopHealthCheck();
   });
 
   return client;
@@ -84,7 +133,7 @@ async function getClient() {
 }
 
 function getStatus() {
-  return { status, lastError };
+  return { status, lastError, lastHealthCheckAt, lastHealthCheckError };
 }
 
 function getLastQr() {
